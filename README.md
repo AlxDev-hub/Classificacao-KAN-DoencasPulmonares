@@ -17,3 +17,7 @@ No arquivo teste1_cnn.ipynb, grande parte da estrutura do código foi refatorada
 ## Quarto versionamento
 
 Neste versionamento, foi adicionado o arquivo teste1_kan.ipynb para testes utilizando a técnica KAN com o mesmo conjunto amostral descrito no primeiro versionamento. No final do código foi constatado um erro de atualização do grid. Uma "possível" solução para este problema seria alterar a maneira que foi feito o pré-processamento das imagens, como por exemplo, aplicando flatten() nas imagens ou convertendo RGB para 256 níveis de cinza e depois aplicando o flatten().
+
+## Quinto versionamento
+
+Neste versionamento, foram feitas modificação nos arquivos teste1_cnn.ipynb e teste1_kan.ipynb. No teste1_cnn.ipynb, o redimensionamento das imagens foi alterado para (512, 512), o batch_size do trainloader foi alterado para 50 e o shuffle do testloader foi alterado para False. Na construção do modelo CNN, foi alterado a quantidade de camadas convolucionais e ocultas, veja o arquivo teste1_cnn.ipynb para mais detalhes. Foi alterado o num_epoch para 50. No arquivo teste1_kan.ipynb, foi aplicado flatten() nas imagens durante o pré-processamento, ou seja, visto que imagens são dados bidimensionais (matrizes), cada imagem foi transformada em um vetor. Com está modificação, o erro mencionado no versionamento anterior foi resolvido.
