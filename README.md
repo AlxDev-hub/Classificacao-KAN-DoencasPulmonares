@@ -25,3 +25,7 @@ Foram feitas modificação nos arquivos teste1_cnn.ipynb e teste1_kan.ipynb. No 
 ## Sexto versionamento
 
 No arquivo teste1_kan.ipynb, foi utilizado o train_test_split para, de maneira aleatória, modificar a quantidade e disposição dos dados de treinamento e teste.
+
+## Setimo versionamento
+
+A partir daqui foi adicionado mais uma classe no banco de dados e mais imagens, finalizando com 300 imagens, sendo 210 para o treinamento (70-NORMAL, 70-PNEUMONIA e 70-TUBERCULOSE) e 90 para teste (30-NORMAL, 30-PNEUMONIA e 30-TUBERCULOSE). Devido a isso, foram feitas algumas modificações no arquivo teste1_cnn.ipynb. O batch_size do treinamento foi alterado para 30 e do teste para 90. Na implementação da arquitetura CNN, foram adicionadas camadas de batch normalization a cada camada de convolução. Por fim, foi utilizado 30 épocas e função de perda Cross Entropy Loss para realizar o treinamento.
