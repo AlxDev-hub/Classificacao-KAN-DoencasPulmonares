@@ -29,3 +29,7 @@ No arquivo teste1_kan.ipynb, foi utilizado o train_test_split para, de maneira a
 ## Setimo versionamento
 
 A partir daqui foi adicionado mais uma classe no banco de dados e mais imagens, finalizando com 300 imagens, sendo 210 para o treinamento (70-NORMAL, 70-PNEUMONIA e 70-TUBERCULOSE) e 90 para teste (30-NORMAL, 30-PNEUMONIA e 30-TUBERCULOSE). Devido a isso, foram feitas algumas modificações no arquivo teste1_cnn.ipynb. O batch_size do treinamento foi alterado para 30 e do teste para 90. Na implementação da arquitetura CNN, foram adicionadas camadas de batch normalization a cada camada de convolução. Por fim, foi utilizado 30 épocas e função de perda Cross Entropy Loss para realizar o treinamento.
+
+## Oitavo versionamento
+
+Utilizando o banco de dados descrito no versionamento anterior, testes foram feitos no arquivo teste1_kan.ipynb. Quando o treinamento é feito em uma arquitetura com camadas ocultas (independente da quantidade de camadas e neurônios), o kernel do jupyter lab reinicia por volta da quarta ou quinta época. Até o momento deste commit ainda não foi descoberto o motivo deste problema. Também vale ser ressaltado que o valor de acurácia do treinamento já começa no valor máximo e não se altera no decorrer das épocas.
