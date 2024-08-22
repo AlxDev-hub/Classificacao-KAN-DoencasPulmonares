@@ -33,3 +33,7 @@ A partir daqui foi adicionado mais uma classe no banco de dados e mais imagens, 
 ## Oitavo versionamento
 
 Utilizando o banco de dados descrito no versionamento anterior, testes foram feitos no arquivo teste1_kan.ipynb. Quando o treinamento é feito em uma arquitetura com camadas ocultas (independente da quantidade de camadas e neurônios), o kernel do jupyter lab reinicia por volta da quarta ou quinta época. Até o momento deste commit ainda não foi descoberto o motivo deste problema. Também vale ser ressaltado que o valor de acurácia do treinamento já começa no valor máximo e não se altera no decorrer das épocas.
+
+## Nono versionamento
+
+Foi feito uma aplicação do algoritmo *efficient_kan*, que pode ser encontrado neste [link][https://github.com/Blealtan/efficient-kan]. Algo que vale ser mencionado é que a topologia da perda e acurácia do treinamento apresenta uma melhora significativa em relação ao teste1_kan.ipynb.
