@@ -37,3 +37,7 @@ Utilizando o banco de dados descrito no versionamento anterior, testes foram fei
 ## Nono versionamento
 
 Foi feito uma aplicação do algoritmo *efficient_kan*, que pode ser encontrado neste [link](https://github.com/Blealtan/efficient-kan). Algo que vale ser mencionado é que a topologia da perda e acurácia do treinamento apresenta uma melhora significativa em relação ao teste1_kan.ipynb.
+
+## Décimo versionamento
+
+Foram feitas algumas modificações no arquivo teste1_cnn.ipynb, sendo este a versão final para constar na qualificação de mestrado.
