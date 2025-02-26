@@ -7,14 +7,21 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from sklearn.model_selection import KFold
-from sklearn.metrics import *
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Dispositivo utilizado: ", device)
 
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 transform_dataset = transforms.Compose(
     [transforms.Resize(size = (164,164)),
+     transforms.RandomRotation(degrees=10),
+     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10),
+     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1, hue=0.1),
      transforms.ToTensor(),
+     transforms.Lambda(lambda x: torch.clamp(x + torch.randn_like(x) * 0.05, 0., 1.)),
      transforms.Normalize(mean=[0.5], std=[0.5])
     ]
 )
@@ -23,53 +30,56 @@ dataset = datasets.ImageFolder(root='Dataset_Completo', transform=transform_data
 print("\nInformações sobre o Dataset completo: \n\n", dataset)
 print("\nRótulos: ", dataset.class_to_idx)
 
-model = nn.Sequential(
-    nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-    nn.BatchNorm2d(32),
-    nn.ReLU(),
+def cnn_model():
+    model = nn.Sequential(
+        nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
 
-    nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-    nn.BatchNorm2d(64),
-    nn.ReLU(),
-    nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+        nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
 
-    nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-    nn.BatchNorm2d(128),
-    nn.ReLU(),
+        nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+        nn.BatchNorm2d(128),
+        nn.ReLU(),
 
-    nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-    nn.BatchNorm2d(256),
-    nn.ReLU(),
-    nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+        nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+        nn.BatchNorm2d(256),
+        nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
 
-    nn.Flatten(),
+        nn.Flatten(),
 
-    nn.Linear(256 * 41 * 41, 256),
-    nn.Dropout(p=0.3),
-    nn.ReLU(),
+        nn.Linear(256 * 41 * 41, 256),
+        nn.Dropout(p=0.3),
+        nn.ReLU(),
 
-    nn.Linear(256, 128),
-    nn.Dropout(p=0.3),
-    nn.ReLU(),
+        nn.Linear(256, 128),
+        nn.Dropout(p=0.3),
+        nn.ReLU(),
 
-    nn.Linear(128, 64),
-    nn.Dropout(p=0.3),
-    nn.ReLU(),
+        nn.Linear(128, 64),
+        nn.Dropout(p=0.3),
+        nn.ReLU(),
 
-    nn.Linear(64, 32),
-    nn.Dropout(p=0.3),
-    nn.ReLU(),
+        nn.Linear(64, 32),
+        nn.Dropout(p=0.3),
+        nn.ReLU(),
 
-    nn.Linear(32, 3)
-)
-model.to(device)
+        nn.Linear(32, 3)
+    )
+    return model
+
+def reset_weights(m):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        m.reset_parameters()
 
 num_epoch = 250
 learning_rate = 0.001
-k_folds = 3
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-loss_fn = nn.CrossEntropyLoss()
 
+k_folds = 3
 kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
 
 results_acc = {}
@@ -81,9 +91,14 @@ training_start_time = time.time()
 
 for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     print(f'\nFold {fold+1}/{k_folds}')
-
     print(f'\nQuantidade de dados (Treinamento): {len(train_idx)}')
     print(f'Quantidade de dados (Teste): {len(test_idx)}')
+
+    model = cnn_model().to(device)
+    model.apply(reset_weights)
+
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    loss_fn = nn.CrossEntropyLoss()
 
     train_sampler = SubsetRandomSampler(train_idx)
     test_sampler = SubsetRandomSampler(test_idx)
@@ -92,12 +107,10 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     testloader = DataLoader(dataset, batch_size=16, sampler=test_sampler)
 
     all_targets = []
-    n = []
-    p = []
-    t = []
     for img, rtl, in trainloader:
         all_targets.extend(rtl.tolist())
 
+    n, p, t = [], [], []
     for i in range(len(train_sampler)):
         if all_targets[i] == 0:
             n.append(all_targets[i])
@@ -115,7 +128,7 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     train_acc = []
 
     for epoch in range(num_epoch):
-
+        model.train()
         running_train_loss=0.0
         total_samples = 0
         all_preds_train = []
@@ -127,7 +140,6 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     
             optimizer.zero_grad()
             outputs_train = model(inputs_train)
-
             loss = loss_fn(outputs_train, labels_train)
             loss.backward()
             optimizer.step()
@@ -137,7 +149,6 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
             total_samples += batch_size
 
             _, predicted_train = torch.max(outputs_train, 1)
-
             all_preds_train.extend(predicted_train.cpu().numpy())
             all_labels_train.extend(labels_train.cpu().numpy())
 
@@ -162,18 +173,16 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     plt.suptitle("Treinamento", fontsize = 20)
     plt.savefig('train_loss_acc.png', bbox_inches='tight')
 
+    model.eval()
     with torch.no_grad():
-
         all_preds_test = []
         all_labels_test = []
 
         for images_test, labels_test in testloader:
             images_test = images_test.to(device)
-            labels_test = labels_test.to(device)
-        
+            labels_test = labels_test.to(device)       
             outputs_test = model(images_test)
             _, predicted_test = torch.max(outputs_test, 1)
-
             all_preds_test.extend(predicted_test.cpu().numpy())
             all_labels_test.extend(labels_test.cpu().numpy())
 
@@ -195,13 +204,11 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     results_f1[fold] = (100 * f1_test)
 
     cm = confusion_matrix(all_labels_test, all_preds_test)
-
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Normal', 'Pneumonia', 'Tuberculose'])
     disp.plot(cmap=plt.cm.Blues)
-
     plt.xlabel('Rótulo previsto')
     plt.ylabel('Rótulo verdadeiro')
-    plt.savefig('test_matrizconfusao.png', bbox_inches='tight')
+    plt.savefig(f'test_matrizconfusao_fold-{fold+1}.png', bbox_inches='tight')
 
     print("\n!!!Teste finalizado!!!")
 
