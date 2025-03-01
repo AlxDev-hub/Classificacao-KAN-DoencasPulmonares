@@ -8,14 +8,21 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from sklearn.model_selection import KFold
-from sklearn.metrics import *
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Dispositivo utilizado: ", device)
 
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 transform_dataset = transforms.Compose(
     [transforms.Resize(size = (164,164)),
+     transforms.RandomRotation(degrees=10),
+     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10),
+     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1, hue=0.1),
      transforms.ToTensor(),
+     transforms.Lambda(lambda x: torch.clamp(x + torch.randn_like(x) * 0.05, 0., 1.)),
      transforms.Normalize(mean=[0.5], std=[0.5])
     ]
 )
@@ -24,15 +31,14 @@ dataset = datasets.ImageFolder(root='Dataset_Completo', transform=transform_data
 print("\nInformações sobre o Dataset completo: \n\n", dataset)
 print("\nRótulos: ", dataset.class_to_idx)
 
-model = KAN([164*164*3, 164, 64, 32, 3])
-model.to(device)
+def ekan_model():
+    model = KAN([164*164*3, 164, 64, 32, 3])
+    return model
 
 num_epoch = 250
 learning_rate = 0.001
-k_folds = 3
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-loss_fn = nn.CrossEntropyLoss()
 
+k_folds = 3
 kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
 
 results_acc = {}
@@ -44,9 +50,13 @@ training_start_time = time.time()
 
 for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     print(f'\nFold {fold+1}/{k_folds}')
-
     print(f'\nQuantidade de dados (Treinamento): {len(train_idx)}')
     print(f'Quantidade de dados (Teste): {len(test_idx)}')
+
+    model = ekan_model().to(device)
+
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    loss_fn = nn.CrossEntropyLoss()
 
     train_sampler = SubsetRandomSampler(train_idx)
     test_sampler = SubsetRandomSampler(test_idx)
@@ -78,7 +88,7 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     train_acc = []
 
     for epoch in range(num_epoch):
-
+        model.train()
         running_train_loss=0.0
         total_samples = 0
         all_preds_train = []
@@ -90,7 +100,6 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     
             optimizer.zero_grad()
             outputs_train = model(inputs_train)
-
             loss = loss_fn(outputs_train, labels_train)
             loss.backward()
             optimizer.step()
@@ -125,18 +134,16 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     plt.suptitle("Treinamento", fontsize = 20)
     plt.savefig('train_loss_acc.png', bbox_inches='tight')
 
+    model.eval()
     with torch.no_grad():
-
         all_preds_test = []
         all_labels_test = []
 
         for images_test, labels_test in testloader:
             images_test = images_test.view(-1, 164*164*3).to(device)
-            labels_test = labels_test.to(device)
-        
+            labels_test = labels_test.to(device)   
             outputs_test = model(images_test)
             _, predicted_test = torch.max(outputs_test, 1)
-
             all_preds_test.extend(predicted_test.cpu().numpy())
             all_labels_test.extend(labels_test.cpu().numpy())
 
@@ -158,10 +165,8 @@ for fold, (train_idx, test_idx) in enumerate(kf.split(dataset)):
     results_f1[fold] = (100 * f1_test)
 
     cm = confusion_matrix(all_labels_test, all_preds_test)
-
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Normal', 'Pneumonia', 'Tuberculose'])
     disp.plot(cmap=plt.cm.Blues)
-
     plt.xlabel('Rótulo previsto')
     plt.ylabel('Rótulo verdadeiro')
     plt.savefig('test_matrizconfusao.png', bbox_inches='tight')
